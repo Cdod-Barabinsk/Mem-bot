@@ -1,55 +1,42 @@
-import turtle
-import time
 import random
+import telebot
+from telebot import types
+import os
+import glob
 
-# Инициализация экрана
-screen = turtle.Screen()
-player = turtle.Turtle()
-player.shape("square")  # Форма игрока
-player.color("red")  # Цвет игрока
-player.penup()  # Игрок не оставляет след
+bot = telebot.TeleBot("Token")
 
-# Координаты начала и конца уровня
-start_x = -300
-start_y = -300
-end_x = 300
-end_y = -300
+# Путь к папке с картинками
+image_folder_path = 'mems'
 
-# Создание противников
-enemy = turtle.Turtle()
-enemy.shape("triangle")  # Форма противника
-enemy.color("blue")  # Цвет противника
-enemy.penup()  # Противник не оставляет след
-enemy.setposition(-200, 0)  # Начальная позиция противника
+# Получить список файлов с расширением .jpg в папке
+image_files = glob.glob(os.path.join(image_folder_path, '*.jpeg'))
 
-# Функция движения игрока
-def move():
-    global lives
-    if player.xcor() >= start_x and player.xcor() <= end_x and player.heading() == 0:  # Если игрок достиг конца
-        player.setposition(start_x, player.ycor())
-    elif player.xcor() <= -start_x and player.xcor() >= -end_x and player.heading() == 180:  # Если игрок вернулся к началу
-        player.setposition(end_x, player.ycor())
-        player.setheading(0)
-    elif player.ycor() >= start_y and player.ycor() <= end_y and player.heading() == 90:  # Если игрок достиг конца
-        player.setposition(player.xcor(), start_y)
-        player.setheading(0)
-    elif player.ycor() <= -start_y and player.ycor() >= -end_y and player.heading() == 270:  # Если игрок вернулся к началу
-        player.setposition(player.xcor(), end_y)
-        player.setheading(0)
-    else:
-        player.forward(5)  # Движение игрокаaa
+sent_images = []
 
-# Функция создания противников
-def create_enemies():
-    enemy.setposition(random.randint(-300, 300), random.randint(-300, 300))
+@bot.message_handler(commands=["start"])
 
-# Функция обновления игры
-def update():
-    global lives
-    move()
-    create_enemies()
-    screen.ontimer(update, 200)  # Увеличиваем скорость игры
+def handle_start(message):
+    keyboard = types.ReplyKeyboardMarkup(True)
+    button1 = types.KeyboardButton("mem")
+    keyboard.add(button1)
+    bot.send_message(message.chat.id, "Привет, я мем-бот. Для получения мема нажми кнопку 'mem'", reply_markup=keyboard)
+@bot.message_handler(func=lambda message: message.text == "mem")
 
-# Запуск игры
-lives = 3
-update()
+
+def handle_mem(message):
+    send_random_image(message.chat.id)
+
+
+def send_random_image(chat_id):
+    # Получить список изображений, которые еще не были отправлены
+    available_images = [image for image in image_files if image not in sent_images]
+    if not available_images:
+        bot.send_message(chat_id, "Все мемы уже отправлены! Дождитесь поплнения базы мемов")
+        return
+    random_image = random.choice(available_images)
+    sent_images.append(random_image)  # Добавить отправленное изображение в список
+    with open(random_image, 'rb') as photo:
+        bot.send_photo(chat_id, photo)
+
+bot.polling(none_stop=True)
